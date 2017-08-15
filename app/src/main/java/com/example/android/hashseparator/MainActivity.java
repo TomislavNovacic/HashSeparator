@@ -3,6 +3,8 @@ package com.example.android.hashseparator;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.CountDownTimer;
+import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.Button;
@@ -34,6 +36,7 @@ public class MainActivity extends AppCompatActivity {
     ArrayList<Webpage> webpageListDatabase;
     ArrayList<Webpage> webpageListSharedPreferences;
     DbHelper db;
+    Handler handler;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,6 +56,16 @@ public class MainActivity extends AppCompatActivity {
                 if(!(webpageListDatabase == null)) {
                     for (Webpage webpage : webpageListDatabase) {
                         if (insertedURL.equals(webpage.getUrl())) {
+                            hash_button.setEnabled(false);
+                            new CountDownTimer(5000, 10) {
+                                public void onTick(long millisUntilFinished) {
+                                }
+
+                                @Override
+                                public void onFinish() {
+                                    hash_button.setEnabled(true);
+                                }
+                            }.start();
                             Toast.makeText(getApplicationContext(), "URL: " + webpage.getUrl() + "\n" + "Hash code: " + Arrays.toString(webpage.getHash()) + "\n" + "Saved in " + webpage.getStorage(), Toast.LENGTH_LONG).show();
                             return;
                         }
@@ -67,6 +80,16 @@ public class MainActivity extends AppCompatActivity {
                 webpageListSharedPreferences = gson.fromJson(json, type);
                     for (Webpage webpage : webpageListSharedPreferences) {
                         if (insertedURL.equals(webpage.getUrl())) {
+                            hash_button.setEnabled(false);
+                            new CountDownTimer(5000, 10) {
+                                public void onTick(long millisUntilFinished) {
+                                }
+
+                                @Override
+                                public void onFinish() {
+                                    hash_button.setEnabled(true);
+                                }
+                            }.start();
                             Toast.makeText(getApplicationContext(), "URL: " + webpage.getUrl() + "\n" + "Hash code: " + Arrays.toString(webpage.getHash()) + "\n" + "Saved in " + webpage.getStorage(), Toast.LENGTH_LONG).show();
                             return;
                         }
@@ -80,6 +103,7 @@ public class MainActivity extends AppCompatActivity {
         });
         webpageListDatabase = new ArrayList<>();
         webpageListSharedPreferences = new ArrayList<>();
+        Handler handler = new Handler();
     }
 
     private class WebpageAsyncTask extends AsyncTask<String, Void, String> {
@@ -89,12 +113,15 @@ public class MainActivity extends AppCompatActivity {
             if (urls.length < 1 || urls[0] == null) {
                 return null;
             }
-
             return QueryUtils.fetchWebpageData(urls[0], getApplicationContext());
         }
 
         @Override
         protected void onPostExecute(String data) {
+            String exception = QueryUtils.catchException();
+            if(exception != null) {
+                Toast.makeText(getApplicationContext(),exception,Toast.LENGTH_LONG).show();
+            }
             if (data != null && !data.isEmpty()) {
                 try {
                     try {

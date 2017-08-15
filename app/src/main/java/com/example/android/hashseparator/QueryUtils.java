@@ -1,8 +1,6 @@
 package com.example.android.hashseparator;
 
-import android.app.Activity;
 import android.content.Context;
-import android.widget.Toast;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -16,17 +14,27 @@ import java.nio.charset.Charset;
 
 public final class QueryUtils {
 
-    Activity activity;
+    private static String exception;
 
     private QueryUtils() {
     }
 
     private static URL createUrl(String stringUrl, Context context) {
+        if(stringUrl.length() >= 8) {
+            String firstEightCharacters = stringUrl.substring(0, 8);
+            String firstSevenCharacters = stringUrl.substring(0, 7);
+            if (!(firstEightCharacters.equals("https://")) && !(firstSevenCharacters.equals("http://"))) {
+                StringBuilder sb = new StringBuilder();
+                sb.append("https://");
+                sb.append(stringUrl);
+                stringUrl = sb.toString();
+            }
+        }
         URL url = null;
         try {
             url = new URL(stringUrl);
         } catch (MalformedURLException e) {
-            Toast.makeText(context,"Problem building the webpage URL", Toast.LENGTH_LONG).show();
+            exception = "Problem building the webpage URL.";
         }
         return url;
     }
@@ -51,10 +59,10 @@ public final class QueryUtils {
                 inputStream = urlConnection.getInputStream();
                 response = readFromStream(inputStream);
             } else {
-                Toast.makeText(context,"Error response code: " + urlConnection.getResponseCode(), Toast.LENGTH_LONG).show();
+                exception = "Error response code: " + urlConnection.getResponseCode();
             }
         } catch (IOException e) {
-            Toast.makeText(context,"Problem retrieving the webpage HTML.", Toast.LENGTH_LONG).show();
+            exception = "Problem retrieving the webpage HTML.";
 
         } finally {
             if (urlConnection != null) {
@@ -88,8 +96,12 @@ public final class QueryUtils {
         try {
             response = makeHttpRequest(url, context);
         } catch (IOException e) {
-            Toast.makeText(context,"Problem making the HTTP request.", Toast.LENGTH_LONG).show();
+            exception = "Problem making the HTTP request.";
         }
         return response;
+    }
+
+    public static String catchException() {
+        return exception;
     }
 }
