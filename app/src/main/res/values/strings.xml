@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">HashSeparator</string>
+    <string name="URL_hint">Enter webpage URL here.</string>
+    <string name="generate_hash_button_text">Generate Hash</string>
+</resources>
