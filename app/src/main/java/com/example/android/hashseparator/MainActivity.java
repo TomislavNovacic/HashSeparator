@@ -73,8 +73,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private LoaderManager.LoaderCallbacks<String> webpageLoaderListener
-            = new LoaderManager.LoaderCallbacks<String>() {
+    private LoaderManager.LoaderCallbacks<String> webpageLoaderListener = new LoaderManager.LoaderCallbacks<String>() {
         @Override
         public Loader<String> onCreateLoader(int id, Bundle args) {
             return new WebpageLoader(getApplicationContext(), insertedURL);
@@ -82,7 +81,6 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onLoadFinished(Loader<String> loader, String data) {
-
             progressBar.setVisibility(View.GONE);
             exception = QueryUtils.catchException();
             if(exception != null) {
@@ -99,8 +97,7 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-    private LoaderManager.LoaderCallbacks<byte[]> hashLoaderListener
-            = new LoaderManager.LoaderCallbacks<byte[]>() {
+    private LoaderManager.LoaderCallbacks<byte[]> hashLoaderListener = new LoaderManager.LoaderCallbacks<byte[]>() {
         @Override
         public Loader<byte[]> onCreateLoader(int id, Bundle args) {
             return new HashLoader(getApplicationContext(), insertedURL);
@@ -115,12 +112,10 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onLoaderReset(Loader<byte[]> loader) {
-
         }
     };
 
-    private LoaderManager.LoaderCallbacks<String> databaseLoaderListener
-            = new LoaderManager.LoaderCallbacks<String>() {
+    private LoaderManager.LoaderCallbacks<String> databaseLoaderListener = new LoaderManager.LoaderCallbacks<String>() {
         @Override
         public Loader<String> onCreateLoader(int id, Bundle args) {
             return new DatabaseLoader(getApplicationContext(), webpage);
@@ -135,7 +130,6 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onLoaderReset(Loader<String> loader) {
-
         }
     };
 }
