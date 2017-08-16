@@ -17,6 +17,7 @@ public final class QueryUtils {
     private QueryUtils() {
     }
 
+
     private static URL createUrl(String stringUrl) {
         if(stringUrl.length() >= 8) {
             String firstEightCharacters = stringUrl.substring(0, 8);
@@ -89,6 +90,7 @@ public final class QueryUtils {
     }
 
     public static String fetchWebpageData(String requestUrl) {
+
         URL url = createUrl(requestUrl);
         String response = null;
         try {

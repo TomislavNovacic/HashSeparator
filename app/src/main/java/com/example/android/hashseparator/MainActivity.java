@@ -1,14 +1,18 @@
 package com.example.android.hashseparator;
 
 import android.app.LoaderManager;
+import android.content.Context;
 import android.content.Loader;
 import android.content.SharedPreferences;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import com.google.gson.Gson;
@@ -37,6 +41,7 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
     ArrayList<Webpage> webpageListDatabase;
     ArrayList<Webpage> webpageListSharedPreferences;
     DbHelper db;
+    ProgressBar progressBar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,10 +50,12 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
 
         url_edittext = (EditText) findViewById(R.id.URL_editText);
         hash_button = (Button) findViewById(R.id.generate_hash_button);
+        progressBar = (ProgressBar) findViewById(R.id.progress_bar);
 
         hash_button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                progressBar.setVisibility(View.VISIBLE);
                 insertedURL = url_edittext.getText().toString();
                 if(db != null) {
                     webpageListDatabase = db.getAllWebpages();
@@ -96,8 +103,18 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
                     }
                 }
 
-                LoaderManager loaderManager = getLoaderManager();
-                loaderManager.initLoader(WEBPAGE_LOADER_ID, null, MainActivity.this);
+                ConnectivityManager connMgr = (ConnectivityManager)
+                        getSystemService(Context.CONNECTIVITY_SERVICE);
+                NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
+                if (networkInfo != null && networkInfo.isConnected()) {
+                    LoaderManager loaderManager = getLoaderManager();
+                    loaderManager.initLoader(WEBPAGE_LOADER_ID, null, MainActivity.this);
+                } else {
+                    View loadingIndicator = findViewById(R.id.progress_bar);
+                    loadingIndicator.setVisibility(View.GONE);
+                    Toast.makeText(getApplicationContext(),"No intenet connection.", Toast.LENGTH_LONG).show();
+                };
+
                 db = new DbHelper(getApplicationContext());
             }
         });
@@ -112,6 +129,9 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
 
     @Override
     public void onLoadFinished(Loader<String> loader, String data) {
+
+        progressBar.setVisibility(View.GONE);
+
         String exception = QueryUtils.catchException();
         if(exception != null) {
             Toast.makeText(getApplicationContext(),exception,Toast.LENGTH_LONG).show();
