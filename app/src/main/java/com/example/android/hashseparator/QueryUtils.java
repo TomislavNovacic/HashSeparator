@@ -1,7 +1,5 @@
 package com.example.android.hashseparator;
 
-import android.content.Context;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -19,7 +17,7 @@ public final class QueryUtils {
     private QueryUtils() {
     }
 
-    private static URL createUrl(String stringUrl, Context context) {
+    private static URL createUrl(String stringUrl) {
         if(stringUrl.length() >= 8) {
             String firstEightCharacters = stringUrl.substring(0, 8);
             String firstSevenCharacters = stringUrl.substring(0, 7);
@@ -39,7 +37,7 @@ public final class QueryUtils {
         return url;
     }
 
-    private static String makeHttpRequest(URL url, Context context) throws IOException {
+    private static String makeHttpRequest(URL url) throws IOException {
         String response = "";
 
         if (url == null) {
@@ -90,11 +88,11 @@ public final class QueryUtils {
         return output.toString();
     }
 
-    public static String fetchWebpageData(String requestUrl, Context context) {
-        URL url = createUrl(requestUrl, context);
+    public static String fetchWebpageData(String requestUrl) {
+        URL url = createUrl(requestUrl);
         String response = null;
         try {
-            response = makeHttpRequest(url, context);
+            response = makeHttpRequest(url);
         } catch (IOException e) {
             exception = "Problem making the HTTP request.";
         }

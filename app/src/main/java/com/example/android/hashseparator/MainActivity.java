@@ -1,10 +1,10 @@
 package com.example.android.hashseparator;
 
+import android.app.LoaderManager;
+import android.content.Loader;
 import android.content.SharedPreferences;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.CountDownTimer;
-import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.Button;
@@ -22,12 +22,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<String> {
 
     private static final String PREFS_NAME = "SharedPreferences_name";
     private static final String STORAGE_DATABASE = "Database";
     private static final String STORAGE_SHARED_PREFS = "Shared Preferences";
     private static final String SHARED_PREFS_WEBPAGE_LIST = "Webpage List";
+    private static final int WEBPAGE_LOADER_ID = 1;
 
     byte[] hashValue;
     EditText url_edittext;
@@ -36,7 +37,6 @@ public class MainActivity extends AppCompatActivity {
     ArrayList<Webpage> webpageListDatabase;
     ArrayList<Webpage> webpageListSharedPreferences;
     DbHelper db;
-    Handler handler;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -96,72 +96,70 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
 
-                WebpageAsyncTask task = new WebpageAsyncTask();
-                task.execute(insertedURL);
+                LoaderManager loaderManager = getLoaderManager();
+                loaderManager.initLoader(WEBPAGE_LOADER_ID, null, MainActivity.this);
                 db = new DbHelper(getApplicationContext());
             }
         });
         webpageListDatabase = new ArrayList<>();
         webpageListSharedPreferences = new ArrayList<>();
-        Handler handler = new Handler();
     }
 
-    private class WebpageAsyncTask extends AsyncTask<String, Void, String> {
+    @Override
+    public Loader<String> onCreateLoader(int id, Bundle args) {
+        return new WebpageLoader(this, insertedURL);
+    }
 
-        @Override
-        protected String doInBackground(String... urls) {
-            if (urls.length < 1 || urls[0] == null) {
-                return null;
-            }
-            return QueryUtils.fetchWebpageData(urls[0], getApplicationContext());
+    @Override
+    public void onLoadFinished(Loader<String> loader, String data) {
+        String exception = QueryUtils.catchException();
+        if(exception != null) {
+            Toast.makeText(getApplicationContext(),exception,Toast.LENGTH_LONG).show();
         }
-
-        @Override
-        protected void onPostExecute(String data) {
-            String exception = QueryUtils.catchException();
-            if(exception != null) {
-                Toast.makeText(getApplicationContext(),exception,Toast.LENGTH_LONG).show();
-            }
-            if (data != null && !data.isEmpty()) {
+        if (data != null && !data.isEmpty()) {
+            try {
                 try {
-                    try {
-                        hashValue = MD5Hash(data.getBytes("UTF-8"));
-                    } catch (UnsupportedEncodingException e) {
-                        e.printStackTrace();
-                    }
-                } catch (NoSuchAlgorithmException e) {
+                    hashValue = MD5Hash(data.getBytes("UTF-8"));
+                } catch (UnsupportedEncodingException e) {
                     e.printStackTrace();
                 }
-
-                Webpage webpage = new Webpage(insertedURL, hashValue, "");
-
-                Save(webpage);
-
-                Toast.makeText(getApplicationContext(), "URL: " + webpage.getUrl() + "\n" + "Hash code: " + Arrays.toString(webpage.getHash()) + "\n" + "Saved in " + webpage.getStorage(), Toast.LENGTH_LONG).show();
-                return;
+            } catch (NoSuchAlgorithmException e) {
+                e.printStackTrace();
             }
-        }
 
-        private byte[] MD5Hash(byte[] dataBytes) throws NoSuchAlgorithmException {
-            if (dataBytes == null) return null;
-            MessageDigest md = MessageDigest.getInstance("MD5");
-            md.update(dataBytes);
-            return md.digest();
+            Webpage webpage = new Webpage(insertedURL, hashValue, "");
+
+            Save(webpage);
+
+            Toast.makeText(getApplicationContext(), "URL: " + webpage.getUrl() + "\n" + "Hash code: " + Arrays.toString(webpage.getHash()) + "\n" + "Saved in " + webpage.getStorage(), Toast.LENGTH_LONG).show();
+            return;
         }
-        private void Save(Webpage webpage) {
-            if (webpage.getHash()[0] % 2 == 0) {
-                webpage.setStorage(STORAGE_DATABASE);
-                db.addWebpage(webpage);
-            } else {
-                SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
-                SharedPreferences.Editor editor = settings.edit();
-                webpage.setStorage(STORAGE_SHARED_PREFS);
-                webpageListSharedPreferences.add(webpage);
-                Gson gson = new Gson();
-                String json = gson.toJson(webpageListSharedPreferences);
-                editor.putString(SHARED_PREFS_WEBPAGE_LIST, json);
-                editor.apply();
-            }
+    }
+
+    @Override
+    public void onLoaderReset(Loader<String> loader) {
+    }
+
+
+    private byte[] MD5Hash(byte[] dataBytes) throws NoSuchAlgorithmException {
+        if (dataBytes == null) return null;
+        MessageDigest md = MessageDigest.getInstance("MD5");
+        md.update(dataBytes);
+        return md.digest();
+    }
+    private void Save(Webpage webpage) {
+        if (webpage.getHash()[0] % 2 == 0) {
+            webpage.setStorage(STORAGE_DATABASE);
+            db.addWebpage(webpage);
+        } else {
+            SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+            SharedPreferences.Editor editor = settings.edit();
+            webpage.setStorage(STORAGE_SHARED_PREFS);
+            webpageListSharedPreferences.add(webpage);
+            Gson gson = new Gson();
+            String json = gson.toJson(webpageListSharedPreferences);
+            editor.putString(SHARED_PREFS_WEBPAGE_LIST, json);
+            editor.apply();
         }
     }
 }
