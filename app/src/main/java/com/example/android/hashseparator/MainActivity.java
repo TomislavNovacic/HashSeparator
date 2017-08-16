@@ -1,13 +1,9 @@
 package com.example.android.hashseparator;
 
+import android.app.Activity;
 import android.app.LoaderManager;
-import android.content.Context;
 import android.content.Loader;
-import android.content.SharedPreferences;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
 import android.os.Bundle;
-import android.os.CountDownTimer;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.Button;
@@ -15,26 +11,17 @@ import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-
-import java.io.UnsupportedEncodingException;
-import java.lang.reflect.Type;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
-public class MainActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<String> {
+public class MainActivity extends AppCompatActivity {
 
-    private static final String PREFS_NAME = "SharedPreferences_name";
-    private static final String STORAGE_DATABASE = "Database";
-    private static final String STORAGE_SHARED_PREFS = "Shared Preferences";
-    private static final String SHARED_PREFS_WEBPAGE_LIST = "Webpage List";
+    private static final String STATUS_OK = "OK";
+    private static final String STATUS_NOT_PRESENTED = "NOT PRESENTED";
     private static final int WEBPAGE_LOADER_ID = 1;
+    private static final int HASH_LOADER_ID = 2;
+    private static final int DATABASE_LOADER_ID = 3;
 
-    byte[] hashValue;
     EditText url_edittext;
     Button hash_button;
     String insertedURL;
@@ -42,6 +29,10 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
     ArrayList<Webpage> webpageListSharedPreferences;
     DbHelper db;
     ProgressBar progressBar;
+    Webpage webpage;
+    String status;
+    String networkStatus;
+    String exception;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,134 +43,99 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
         hash_button = (Button) findViewById(R.id.generate_hash_button);
         progressBar = (ProgressBar) findViewById(R.id.progress_bar);
 
+        db = new DbHelper(getApplicationContext());
+
+        final Activity activity = this;
+
         hash_button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                progressBar.setVisibility(View.VISIBLE);
+                exception = null;
                 insertedURL = url_edittext.getText().toString();
-                if(db != null) {
-                    webpageListDatabase = db.getAllWebpages();
-                }
-                if(!(webpageListDatabase == null)) {
-                    for (Webpage webpage : webpageListDatabase) {
-                        if (insertedURL.equals(webpage.getUrl())) {
-                            hash_button.setEnabled(false);
-                            new CountDownTimer(5000, 10) {
-                                public void onTick(long millisUntilFinished) {
-                                }
+                webpageListDatabase = new ArrayList<>();
+                webpageListSharedPreferences = new ArrayList<>();
 
-                                @Override
-                                public void onFinish() {
-                                    hash_button.setEnabled(true);
-                                }
-                            }.start();
-                            Toast.makeText(getApplicationContext(), "URL: " + webpage.getUrl() + "\n" + "Hash code: " + Arrays.toString(webpage.getHash()) + "\n" + "Saved in " + webpage.getStorage(), Toast.LENGTH_LONG).show();
-                            return;
-                        }
+                status = Controller.checkDatabase(activity, MainActivity.this, db, webpageListDatabase, insertedURL);
+
+                status = Controller.checkSharedPrefs(activity, MainActivity.this, webpageListSharedPreferences, insertedURL);
+
+                if (status.equals(STATUS_NOT_PRESENTED)) {
+                    networkStatus = Controller.checkInternetConnection(MainActivity.this);
+                    if (networkStatus.equals(STATUS_OK)) {
+                        LoaderManager loaderManager = getLoaderManager();
+                        loaderManager.restartLoader(WEBPAGE_LOADER_ID, null, webpageLoaderListener);
+                    } else {
+                        Toast.makeText(getApplicationContext(), "No intenet connection.", Toast.LENGTH_LONG).show();
                     }
+                    ;
                 }
-
-                SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
-                Gson gson = new Gson();
-                String json = settings.getString(SHARED_PREFS_WEBPAGE_LIST, "");
-                Type type = new TypeToken<List<Webpage>>(){}.getType();
-                if (!(json.equals(""))) {
-                webpageListSharedPreferences = gson.fromJson(json, type);
-                    for (Webpage webpage : webpageListSharedPreferences) {
-                        if (insertedURL.equals(webpage.getUrl())) {
-                            hash_button.setEnabled(false);
-                            new CountDownTimer(5000, 10) {
-                                public void onTick(long millisUntilFinished) {
-                                }
-
-                                @Override
-                                public void onFinish() {
-                                    hash_button.setEnabled(true);
-                                }
-                            }.start();
-                            Toast.makeText(getApplicationContext(), "URL: " + webpage.getUrl() + "\n" + "Hash code: " + Arrays.toString(webpage.getHash()) + "\n" + "Saved in " + webpage.getStorage(), Toast.LENGTH_LONG).show();
-                            return;
-                        }
-                    }
-                }
-
-                ConnectivityManager connMgr = (ConnectivityManager)
-                        getSystemService(Context.CONNECTIVITY_SERVICE);
-                NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
-                if (networkInfo != null && networkInfo.isConnected()) {
-                    LoaderManager loaderManager = getLoaderManager();
-                    loaderManager.initLoader(WEBPAGE_LOADER_ID, null, MainActivity.this);
-                } else {
-                    View loadingIndicator = findViewById(R.id.progress_bar);
-                    loadingIndicator.setVisibility(View.GONE);
-                    Toast.makeText(getApplicationContext(),"No intenet connection.", Toast.LENGTH_LONG).show();
-                };
-
-                db = new DbHelper(getApplicationContext());
             }
         });
-        webpageListDatabase = new ArrayList<>();
-        webpageListSharedPreferences = new ArrayList<>();
     }
 
-    @Override
-    public Loader<String> onCreateLoader(int id, Bundle args) {
-        return new WebpageLoader(this, insertedURL);
-    }
-
-    @Override
-    public void onLoadFinished(Loader<String> loader, String data) {
-
-        progressBar.setVisibility(View.GONE);
-
-        String exception = QueryUtils.catchException();
-        if(exception != null) {
-            Toast.makeText(getApplicationContext(),exception,Toast.LENGTH_LONG).show();
+    private LoaderManager.LoaderCallbacks<String> webpageLoaderListener
+            = new LoaderManager.LoaderCallbacks<String>() {
+        @Override
+        public Loader<String> onCreateLoader(int id, Bundle args) {
+            return new WebpageLoader(getApplicationContext(), insertedURL);
         }
-        if (data != null && !data.isEmpty()) {
-            try {
-                try {
-                    hashValue = MD5Hash(data.getBytes("UTF-8"));
-                } catch (UnsupportedEncodingException e) {
-                    e.printStackTrace();
-                }
-            } catch (NoSuchAlgorithmException e) {
-                e.printStackTrace();
+
+        @Override
+        public void onLoadFinished(Loader<String> loader, String data) {
+
+            progressBar.setVisibility(View.GONE);
+            exception = QueryUtils.catchException();
+            if(exception != null) {
+                Toast.makeText(getApplicationContext(),exception,Toast.LENGTH_LONG).show();
+                return;
             }
+            progressBar.setVisibility(View.VISIBLE);
+            LoaderManager HashLoaderManager = getLoaderManager();
+            HashLoaderManager.initLoader(HASH_LOADER_ID, null, hashLoaderListener);
+        }
 
-            Webpage webpage = new Webpage(insertedURL, hashValue, "");
+        @Override
+        public void onLoaderReset(Loader<String> loader) {
+        }
+    };
 
-            Save(webpage);
+    private LoaderManager.LoaderCallbacks<byte[]> hashLoaderListener
+            = new LoaderManager.LoaderCallbacks<byte[]>() {
+        @Override
+        public Loader<byte[]> onCreateLoader(int id, Bundle args) {
+            return new HashLoader(getApplicationContext(), insertedURL);
+        }
 
+        @Override
+        public void onLoadFinished(Loader<byte[]> loader, byte[] hashValue) {
+           webpage = new Webpage(insertedURL, hashValue, "");
+           LoaderManager DatabaseLoaderManager = getLoaderManager();
+           DatabaseLoaderManager.initLoader(DATABASE_LOADER_ID, null, databaseLoaderListener);
+        }
+
+        @Override
+        public void onLoaderReset(Loader<byte[]> loader) {
+
+        }
+    };
+
+    private LoaderManager.LoaderCallbacks<String> databaseLoaderListener
+            = new LoaderManager.LoaderCallbacks<String>() {
+        @Override
+        public Loader<String> onCreateLoader(int id, Bundle args) {
+            return new DatabaseLoader(getApplicationContext(), webpage);
+        }
+
+        @Override
+        public void onLoadFinished(Loader<String> loader, String webpageStorage) {
+            webpage.setStorage(webpageStorage);
             Toast.makeText(getApplicationContext(), "URL: " + webpage.getUrl() + "\n" + "Hash code: " + Arrays.toString(webpage.getHash()) + "\n" + "Saved in " + webpage.getStorage(), Toast.LENGTH_LONG).show();
-            return;
+            progressBar.setVisibility(View.GONE);
         }
-    }
 
-    @Override
-    public void onLoaderReset(Loader<String> loader) {
-    }
+        @Override
+        public void onLoaderReset(Loader<String> loader) {
 
-
-    private byte[] MD5Hash(byte[] dataBytes) throws NoSuchAlgorithmException {
-        if (dataBytes == null) return null;
-        MessageDigest md = MessageDigest.getInstance("MD5");
-        md.update(dataBytes);
-        return md.digest();
-    }
-    private void Save(Webpage webpage) {
-        if (webpage.getHash()[0] % 2 == 0) {
-            webpage.setStorage(STORAGE_DATABASE);
-            db.addWebpage(webpage);
-        } else {
-            SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
-            SharedPreferences.Editor editor = settings.edit();
-            webpage.setStorage(STORAGE_SHARED_PREFS);
-            webpageListSharedPreferences.add(webpage);
-            Gson gson = new Gson();
-            String json = gson.toJson(webpageListSharedPreferences);
-            editor.putString(SHARED_PREFS_WEBPAGE_LIST, json);
-            editor.apply();
         }
-    }
+    };
 }

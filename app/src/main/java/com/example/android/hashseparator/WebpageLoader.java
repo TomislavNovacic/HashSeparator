@@ -1,11 +1,13 @@
 package com.example.android.hashseparator;
 
+import android.app.Activity;
 import android.content.AsyncTaskLoader;
 import android.content.Context;
 
 public class WebpageLoader extends AsyncTaskLoader<String> {
 
     private String mUrl;
+    private Activity mActivity;
 
     public WebpageLoader(Context context, String url) {
         super(context);

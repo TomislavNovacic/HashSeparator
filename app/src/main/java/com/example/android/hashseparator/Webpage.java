@@ -1,9 +1,5 @@
 package com.example.android.hashseparator;
 
-/**
- * Created by Tomi on 14.8.2017..
- */
-
 public class Webpage {
 
    private String mUrl;

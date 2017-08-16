@@ -90,7 +90,7 @@ public final class QueryUtils {
     }
 
     public static String fetchWebpageData(String requestUrl) {
-
+        exception = null;
         URL url = createUrl(requestUrl);
         String response = null;
         try {
